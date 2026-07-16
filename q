@@ -13,7 +13,15 @@ set -euo pipefail
 Q_HOME="${Q_HOME:-$HOME/.q}"
 Q_SESSION_DIR="$Q_HOME/sessions"
 Q_MEMORY_FILE="$Q_HOME/memory.md"
-SYSTEM_PROMPT_FILE="/Users/nguyenhuynh/work/question/SYSTEM-PROMPT.md"
+
+SOURCE="${BASH_SOURCE[0]}"
+while [ -L "$SOURCE" ]; do
+  DIR="$(cd -P "$(dirname "$SOURCE")" >/dev/null 2>&1 && pwd)"
+  SOURCE="$(readlink "$SOURCE")"
+  [[ "$SOURCE" != /* ]] && SOURCE="$DIR/$SOURCE"
+done
+SCRIPT_DIR="$(cd -P "$(dirname "$SOURCE")" >/dev/null 2>&1 && pwd)"
+SYSTEM_PROMPT_FILE="${SYSTEM_PROMPT_FILE:-$SCRIPT_DIR/SYSTEM-PROMPT.md}"
 
 mkdir -p "$Q_SESSION_DIR"
 
@@ -86,10 +94,14 @@ run_pi() {
 
   if IFS= read -r -n 1 first_byte <&3; then
     cleanup_spinner
-    printf -- '---\n'
-    printf '%s' "$first_byte"
-    cat <&3
-    printf -- '\n---\n'
+    if command -v glow >/dev/null 2>&1 && [ "${Q_GLOW:-1}" != "0" ]; then
+      { printf '%s' "$first_byte"; cat <&3; } | glow -
+    else
+      printf -- '---\n'
+      printf '%s' "$first_byte"
+      cat <&3
+      printf -- '\n---\n'
+    fi
   else
     cleanup_spinner
   fi
@@ -232,8 +244,12 @@ cmd_lq() {
     q) break ;;
     [0-9])
       if [ "$choice" -lt "$i" ]; then
-        printf '%s' "${ids[choice]}" | pbcopy
-        echo "copied ${ids[choice]} — paste with: fq <cmd+v> <question>" >&2
+        if command -v pbcopy >/dev/null 2>&1; then
+          printf '%s' "${ids[choice]}" | pbcopy
+          echo "copied ${ids[choice]} — paste with: fq <cmd+v> <question>" >&2
+        else
+          echo "${ids[choice]}" >&2
+        fi
       else
         echo "no session $choice" >&2
       fi

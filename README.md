@@ -21,6 +21,7 @@ My own agent corner — quick terminal Q&A powered by [pi](https://pi.dev).
   always from `$HOME`, so behavior is identical regardless of cwd.
 - Sessions are stored in an isolated directory (`~/.q/sessions`, override with
   `Q_HOME`), completely separate from pi's own `~/.pi/agent/sessions`.
+- Answers are rendered with `glow` when it is installed. Disable with `Q_GLOW=0`.
 - Stdin is merged into the prompt, so piping works: `git diff | q "review this"`.
 - `q -m` picks memory by keyword match: words of 4+ letters from your question
   are matched (case-insensitively) against the `##` sections of `memory.md`;
@@ -29,8 +30,51 @@ My own agent corner — quick terminal Q&A powered by [pi](https://pi.dev).
 
 ## Setup
 
-Add the repo to `PATH`, or symlink `q`, `fq`, `mq` into a bin directory:
+Add the repo to `PATH`, or symlink `q`, `fq`, `lq` into a bin directory:
 
 ```bash
 ln -s "$PWD/q" "$PWD/fq" "$PWD/lq" ~/.local/bin/
+```
+
+If you use `zsh`, add a `noglob` alias so `?`, `*`, and `[...]` are passed to `q` literally instead of being expanded by the shell:
+
+```bash
+alias q='noglob q'
+```
+
+Add it to `~/.zshrc` to make it permanent:
+
+```bash
+printf "\nalias q='noglob q'\n" >> ~/.zshrc
+source ~/.zshrc
+```
+
+## Docker
+
+Build the image:
+
+```bash
+docker build -t question-q .
+```
+
+Ask a question (pass through your pi provider credentials/config as needed):
+
+```bash
+docker run --rm -it \
+  -e OPENAI_API_KEY \
+  -v q-data:/data/.q \
+  question-q "What is Docker?"
+```
+
+Use the compose file:
+
+```bash
+docker compose run --rm q "What is Docker?"
+```
+
+For `fq` or `lq`, override the entrypoint:
+
+```bash
+docker run --rm -it -v q-data:/data/.q --entrypoint fq question-q "follow up"
+docker run --rm -it -v q-data:/data/.q --entrypoint lq question-q
 ```
